@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "Creating dbgen"
+mkdir build
+cd build/
+pwd
+cmake ..
+make
+echo "dbgen can be found on build folder"
