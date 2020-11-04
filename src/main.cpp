@@ -19,9 +19,11 @@ unordered_map<string, vector<string>> wires;
 unordered_map<string, vector<string>> registers;
 
 string getBitWidthOut(string variable);
+string getBitWidthIn(string input1, string input2);
 string getNumber(string variable);
 void writeVerilogFile(string verilogFile, vector<string> results);
 string getVariableNames();
+bool isItSigned(string variable);
 
 int ModuleIndex = 0; //Global Variable for use in the function convertExpression
 // Converts math expressions in the format of 
@@ -34,27 +36,27 @@ string convertExpresion(vector<string> expression) {
 	string RST = "RST";
 	string result = "";
 	ModuleIndex = ModuleIndex + 1;
-	int bitWidth = 0;
-	bitWidth = stoi(getBitWidthOut(expression[0]));
+	string bitWidth = "";
 	if (expression.size() != 3) {
-
+		bitWidth = getBitWidthIn(expression[0], expression[4]); //Bitwidth is determined by inputs
 		string op = expression[3];
 		//COMP; Comparison
-		result += "COMP ";
+		result += isItSigned(expression[0]) ? "SCOMP" : "COMP";
 		if(op.compare(">") == 0)
-			result += "#(.WIDTH(" + to_string(bitWidth) + "))line" + to_string(ModuleIndex) + "("
+			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
 			+ expression[2] + "," + expression[4] + "," + expression[0] +"," + "1'b0" +"," + "1'b0" + ");";
 
 		else if (op.compare("<") == 0) 
-			result += "#(.WIDTH(" + to_string(bitWidth) + "))line" + to_string(ModuleIndex) + "("
+			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
 			+ expression[2] + "," + expression[4] + "," +"1'b0" + "," + expression[0] + "," + "1'b0" + ");";
 		
 		else if(op.compare("==") == 0)
-			result += "#(.WIDTH(" + to_string(bitWidth) + "))line" + to_string(ModuleIndex) + "("
+			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
 			+ expression[2] + "," + expression[4] + "," + "1'b0" + "," + "1'b0" + "," + expression[0] + ");";
 
 		else {
-			result = "";
+			bitWidth = getBitWidthOut(expression[0]); //Bitwidth is determined by output or wire
+			result = isItSigned(expression[0]) ? "S" : "";//Empty result
 			//ADD; Addition
 			if (op.compare("+") == 0) 
 				result += "ADD ";
@@ -76,19 +78,21 @@ string convertExpresion(vector<string> expression) {
 				result += "SHL ";
 
 			//MUX2x1; Multiplex from 2 to 1. Special Case
-			else if (op.compare("?") == 0) 
-				return "MUX2x1 #(.WIDTH(" + to_string(bitWidth) + "))line" + to_string(ModuleIndex) + "("
-					+ expression[4] + "," + expression[6] + "," + expression[2] + "," + expression[0] +");";
+			else if (op.compare("?") == 0) {
+				result = isItSigned(expression[0]) ? "S" : "";
+				return result + "MUX2x1 #(.WIDTH(" + (bitWidth)+"))line" + to_string(ModuleIndex) + "("
+					+ expression[4] + "," + expression[6] + "," + expression[2] + "," + expression[0] + ");";
+			}
 
-			result += "#(.WIDTH(" + to_string(bitWidth) + "))line" + to_string(ModuleIndex) + "(" 
+			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "(" 
 				+ expression[2] + "," + expression[4] + "," + expression[0] + ");";
 		}
 		return result;
 	}
 	//REG
 	else {
-		bitWidth = stoi(getBitWidthOut(expression[0]));
-		return "REG #(.WIDTH(" + to_string(bitWidth) + "))line" + to_string(ModuleIndex) + "(" + CLK + ","
+		bitWidth = getBitWidthOut(expression[0]);
+		return "REG #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "(" + CLK + ","
 			+ RST + "," + expression[2] + "," + expression[0] + ");";
 	}
 
@@ -97,7 +101,8 @@ string convertExpresion(vector<string> expression) {
 
 
 /**
-Given a variable name, seaches through the outputs "and wires" global variable vector to find the bit width of the parameter variable
+Given a variable name, seaches through the outputs "and wires" global variable vector 
+to find the bit width of the parameter variable
 */
 string getBitWidthOut(string variable){
 	string bitWidth = "0";
@@ -110,12 +115,44 @@ string getBitWidthOut(string variable){
 	return bitWidth;
 }
 
+/*
+Check if the output variable of an operations is signed 
+or unsigned. CHECK if output of component determines if 
+component is unsgined or signed.
+*/
+bool isItSigned(string variable) {
+	bool signedV = false;
+	string x = "s";
+	if (outputs.count(variable) > 0)
+		signedV = (x.compare(outputs[variable][0]) == 0);
+	else if (wires.count(variable) > 0)
+		signedV = (x.compare(wires[variable][1]) == 0);
+	else if (registers.count(variable) > 0)
+		signedV = (x.compare(registers[variable][0]) == 0);
+	return signedV;
+}
+
 /**
-Gets numbers from a string.
-Int8 -> 8
-Int64 -> 64
-Int128 -> 128
-H3LL0 -> 30
+Returns the highest bitwidth of COMP operation.
+CHECK if COMP operations take inputs varaibles as 
+inputs to the modules.
+*/
+string getBitWidthIn(string input1, string input2) {
+	string bitWidth1 = "0", bitWidth2 = "0";
+	if (wires.count(input1) > 0)
+		bitWidth1 = wires[input1][2];
+	else if (inputs.count(input1) > 0)
+		bitWidth1 = inputs[input1][1];
+	if (wires.count(input2) > 0)
+		bitWidth2 = wires[input2][2];
+	else if (inputs.count(input2) > 0)
+		bitWidth2 = inputs[input2][1];
+	return (bitWidth1 > bitWidth2) ? bitWidth1 : bitWidth2;
+}
+
+/**
+Gets numbers from a string. (e.g. Int8 -> 8; Int64 -> 64;
+Int128 -> 128; H3LL0 -> 30)
 */
 string getNumber(string x) {
 	string result = "";
@@ -173,7 +210,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 
 	//while(getline(myfile, line)){
 	while (getline(myfile, line, '\n')) {
-		//cout << "line:" << line << "\n";
+		cout << "line:" << line << "\n";
 		vector<string> lineSplit;
 
 		string token;
@@ -273,8 +310,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 			results.push_back(tempString);
 
 		}
-
-		else if(lineSplit[0] != ""){
+		else if(lineSplit[0] != ""){ //Some lines are empty in the netlist
 			tempString += "\t" + convertExpresion(lineSplit) + "\n";
 			results.push_back(tempString);
 		}
@@ -285,6 +321,10 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 	return 0;
 }
 
+/**
+Creates the Verilog file given the results from the convertExpression
+convertDeclaration functions.
+*/
 void writeVerilogFile(string verilogFile, vector<string> results) {
 	ofstream file;
 	file.open(verilogFile + ".v");
@@ -297,6 +337,10 @@ void writeVerilogFile(string verilogFile, vector<string> results) {
 	return;
 }
 
+/**
+Gets all variables names required to create the module intance in the Verilog file
+from the inputs and outputs.  
+*/
 string getVariableNames() {
 	string variables = "";
 	for(const auto &myPair : inputs) {
@@ -361,7 +405,7 @@ int main(int argc, const char * argv[]) {
 	ifstream myfile;
 	myfile.open(argv[1]);
 	if (myfile) {
-		cout << "file exists" << "\n";
+		cout << "file " << argv[1] << " exists" << "\n";
 		if(argc == 3)
 			readFile(argv[1], argv[2]);
 		else
