@@ -18,12 +18,13 @@ unordered_map<string, vector<string>> outputs;
 unordered_map<string, vector<string>> wires;
 unordered_map<string, vector<string>> registers;
 
-string getBitWidthOut(string variable);
-string getBitWidthIn(string input1, string input2);
+string getBitWidth(string variable);
 string getNumber(string variable);
-void writeVerilogFile(string verilogFile, vector<string> results);
 string getVariableNames();
+string appendToInput(string input, string output);
+void writeVerilogFile(string verilogFile, vector<string> results);
 bool isItSigned(string variable);
+
 
 int ModuleIndex = 0; //Global Variable for use in the function convertExpression
 // Converts math expressions in the format of 
@@ -38,25 +39,27 @@ string convertExpresion(vector<string> expression) {
 	ModuleIndex = ModuleIndex + 1;
 	string bitWidth = "";
 	if (expression.size() != 3) {
-		bitWidth = getBitWidthIn(expression[0], expression[4]); //Bitwidth is determined by inputs
 		string op = expression[3];
+		bitWidth = (getBitWidth(expression[0]) > getBitWidth(expression[4])) ? 
+			getBitWidth(expression[0]) : getBitWidth(expression[4]); //Bitwidth is determined by inputs
+		string inputsToOp = appendToInput(expression[2], bitWidth) + "," + appendToInput(expression[4], bitWidth);
 		//COMP; Comparison
-		result += isItSigned(expression[0]) ? "SCOMP" : "COMP";
+		result += (isItSigned(expression[2]) || isItSigned(expression[4])) ? "S" : ""; //Inputs signed?
 		if(op.compare(">") == 0)
-			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
-			+ expression[2] + "," + expression[4] + "," + expression[0] +"," + "1'b0" +"," + "1'b0" + ");";
+			result += "COMP #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
+			+ inputsToOp + "," + expression[0] +"," + "1'b0" +"," + "1'b0" + ");";
 
 		else if (op.compare("<") == 0) 
-			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
-			+ expression[2] + "," + expression[4] + "," +"1'b0" + "," + expression[0] + "," + "1'b0" + ");";
+			result += "COMP #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
+			+ inputsToOp +"," +"1'b0" + "," + expression[0] + "," + "1'b0" + ");";
 		
 		else if(op.compare("==") == 0)
-			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
-			+ expression[2] + "," + expression[4] + "," + "1'b0" + "," + "1'b0" + "," + expression[0] + ");";
+			result += "COMP #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
+			+ inputsToOp + "," + "1'b0" + "," + "1'b0" + "," + expression[0] + ");";
 
 		else {
-			bitWidth = getBitWidthOut(expression[0]); //Bitwidth is determined by output or wire
-			result = isItSigned(expression[0]) ? "S" : "";//Empty result
+			bitWidth = getBitWidth(expression[0]); //Bitwidth is determined by output or wire
+			inputsToOp = appendToInput(expression[2], bitWidth) + "," + appendToInput(expression[4], bitWidth);
 			//ADD; Addition
 			if (op.compare("+") == 0) 
 				result += "ADD ";
@@ -79,19 +82,20 @@ string convertExpresion(vector<string> expression) {
 
 			//MUX2x1; Multiplex from 2 to 1. Special Case
 			else if (op.compare("?") == 0) {
-				result = isItSigned(expression[0]) ? "S" : "";
+				result = (isItSigned(expression[4]) || isItSigned(expression[6])) ? "S" : "";
 				return result + "MUX2x1 #(.WIDTH(" + (bitWidth)+"))line" + to_string(ModuleIndex) + "("
-					+ expression[4] + "," + expression[6] + "," + expression[2] + "," + expression[0] + ");";
+				+appendToInput(expression[4], bitWidth) + "," + appendToInput(expression[6], bitWidth)+//inputs
+					"," + expression[2] + "," + expression[0] + ");";
 			}
 
 			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "(" 
-				+ expression[2] + "," + expression[4] + "," + expression[0] + ");";
+			+ inputsToOp + "," + expression[0] + ");";
 		}
 		return result;
 	}
 	//REG
 	else {
-		bitWidth = getBitWidthOut(expression[0]);
+		bitWidth = getBitWidth(expression[0]);
 		return "REG #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "(" + CLK + ","
 			+ RST + "," + expression[2] + "," + expression[0] + ");";
 	}
@@ -99,12 +103,48 @@ string convertExpresion(vector<string> expression) {
 	return "UNEXPECTED EXPRESSION or ERROR\n";
 }
 
+/*
+Creates a string which will append/concaneted a input according
+to the output variable which can be signed or unsigned.
+Verilog sign extension:
+	extended[15:0] <= {{8{a[7]}}, a[7:0]};
+Padd zero:
+	extended[15:0] <= {8'b0, a[7:0]};
+*/
+string appendToInput(string input, string bitWidth) {
+	string result = "", mostSigBit = "";
+	int difference = stoi(bitWidth) - stoi(getBitWidth(input));
+	if (difference == 0)
+		result = input;
+	else if (difference > 0) { //Need to add bits
+		mostSigBit = to_string(stoi(getBitWidth(input)) - 1);
+		if (isItSigned(input)) { //sign extend
+			if(mostSigBit != "0")
+				result = "{{" + to_string(difference) + "{" + input + "[" + mostSigBit + "]}}," +
+					input + "[" + mostSigBit + ":0]}";
+			else //Sign extending a bit of size 1
+				result = "{{" + to_string(difference) + "{" + input + "}}," +
+				input + "}";
+		}
+		else { //padd zeros
+			result = "{" + to_string(difference) + "'b0," +
+				input + "[" + mostSigBit + ":0]}";
+		}
+	}
+	else { //Need to remove bits
+		mostSigBit = to_string(stoi(bitWidth) - 1);
+		result = input + "[" + mostSigBit + ":0]";
+	}
+	return result;
+}
 
 /**
-Given a variable name, seaches through the outputs "and wires" global variable vector 
-to find the bit width of the parameter variable
+Given a variable name, seaches through all global variable vectors 
+to find the bit width of the parameter variable.
+All variables names are "SHOULD" be uniquely named, so we can search through all
+vectors until we find it.
 */
-string getBitWidthOut(string variable){
+string getBitWidth(string variable){
 	string bitWidth = "0";
 	if (outputs.count(variable) > 0) 
 		bitWidth = outputs[variable][1];
@@ -112,8 +152,11 @@ string getBitWidthOut(string variable){
 		bitWidth = wires[variable][2];
 	else if (registers.count(variable) > 0)
 		bitWidth = registers[variable][2];
+	else if (inputs.count(variable) > 0)
+		bitWidth = inputs[variable][1];
 	return bitWidth;
 }
+
 
 /*
 Check if the output variable of an operations is signed 
@@ -122,32 +165,15 @@ component is unsgined or signed.
 */
 bool isItSigned(string variable) {
 	bool signedV = false;
-	string x = "s";
 	if (outputs.count(variable) > 0)
-		signedV = (x.compare(outputs[variable][0]) == 0);
+		signedV = (outputs[variable][0] == "s");
 	else if (wires.count(variable) > 0)
-		signedV = (x.compare(wires[variable][1]) == 0);
+		signedV = (wires[variable][1] == "s");
 	else if (registers.count(variable) > 0)
-		signedV = (x.compare(registers[variable][0]) == 0);
+		signedV = (registers[variable][0] == "s");
+	else if (inputs.count(variable) > 0)
+		signedV = (inputs[variable][0] == "s");
 	return signedV;
-}
-
-/**
-Returns the highest bitwidth of COMP operation.
-CHECK if COMP operations take inputs varaibles as 
-inputs to the modules.
-*/
-string getBitWidthIn(string input1, string input2) {
-	string bitWidth1 = "0", bitWidth2 = "0";
-	if (wires.count(input1) > 0)
-		bitWidth1 = wires[input1][2];
-	else if (inputs.count(input1) > 0)
-		bitWidth1 = inputs[input1][1];
-	if (wires.count(input2) > 0)
-		bitWidth2 = wires[input2][2];
-	else if (inputs.count(input2) > 0)
-		bitWidth2 = inputs[input2][1];
-	return (bitWidth1 > bitWidth2) ? bitWidth1 : bitWidth2;
 }
 
 /**
@@ -179,8 +205,7 @@ string convertDeclaration(vector<string> input) {
 		declaration += "wire ";
 	}
 	if (input.at(1) != "Int1") {
-		bits = input.at(1);
-		bits = bits.substr(3, bits.size());
+		bits = getNumber(input.at(1));
 		stringstream degree(bits);
 		degree >> x;
 		x--;
@@ -210,7 +235,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 
 	//while(getline(myfile, line)){
 	while (getline(myfile, line, '\n')) {
-		cout << "line:" << line << "\n";
+		//cout << "line:" << line << "\n";
 		vector<string> lineSplit;
 
 		string token;
