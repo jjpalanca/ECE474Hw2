@@ -13,7 +13,6 @@ create_executable script creates a build folder, compiles, and generates dbgen e
 If you are running on a Windows, you could in theory run the scripts through the WSL command window which Microsft offers. Look with the Window's search bar. 
 
 To do:
-Check the Widths of the modules. The only circuit which agrees with current implementation is circuit 4
 The code will give an error if the lines from the netlist have spaces at the end. ASK TEACHER RISK FAILING TEST CASES
-Unsigned operations still unsuported
 Need to test against error tests
+Need to test against mix circuits
