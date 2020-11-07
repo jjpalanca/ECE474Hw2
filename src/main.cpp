@@ -17,6 +17,7 @@ unordered_map<string, vector<string>> inputs;
 unordered_map<string, vector<string>> outputs;
 unordered_map<string, vector<string>> wires;
 unordered_map<string, vector<string>> registers;
+vector<string> fileVariables;
 
 string getBitWidth(string variable);
 string getNumber(string variable);
@@ -41,9 +42,27 @@ bool isValidOperator(string op) {
 	return isValid;
 }
 
-//bool validVariables(vector<string> expression){
-//	return true;
-//}
+bool validVariables(vector<string> expression){
+	bool isValid = true;
+    for (auto exp: expression){
+        int ctr = 0;
+        for(auto x: fileVariables){
+            if (exp.compare(x) == 0){   // if variable (exp) is found in fileVariables (declared), break out of the inner for loop and check the next 'exp'
+                break;
+            }
+            ctr++;
+        }
+        if (ctr == fileVariables.size()){       // variable (exp) is not found in fileVariables, thus, not valid 
+            cout << "ERROR! Variable '" << exp << "' is missing or not declared!" << endl;
+            return false;
+        }
+
+    }
+
+    return isValid;
+}
+
+
 // Converts math expressions in the format of 
 //  d = a + b
 // to a string of the fo
@@ -55,6 +74,16 @@ string convertExpresion(vector<string> expression) {
 	string result = "";
 	ModuleIndex = ModuleIndex + 1;
 	string bitWidth = "";
+
+    vector<string> vars;
+    for (int i = 0; i < expression.size(); i+=2){
+        vars.push_back(expression[i]);
+    }
+
+    if (!validVariables(vars)) {
+        // cout << "ERROR: Missing variable!" << endl;
+        exit(0);
+    }
 	
 	// if not register expression 
 	if (expression.size() != 3/* && validateVariables() == true*/) {
@@ -299,6 +328,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 						key = lineSplit[i].substr(0, lineSplit[i].size() - 1);
 					}
 					inputs[key] = temp;
+                    fileVariables.push_back(key);
 					// temp = <"a", "32", "s">
 				}
 			}
@@ -320,6 +350,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 						key = lineSplit[i].substr(0, lineSplit[i].size() - 1);
 					}
 					outputs[key] = temp;
+                    fileVariables.push_back(key);
 				}
 			}
 			else if (lineSplit[0] == "wire") {
@@ -340,6 +371,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 						key = lineSplit[i].substr(0, lineSplit[i].size() - 1);
 					}
 					wires[key] = temp;
+                    fileVariables.push_back(key);
 				}
 			}
 			else if (lineSplit[0] == "register") {
@@ -360,6 +392,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 						key = lineSplit[i].substr(0, lineSplit[i].size() - 1);
 					}
 					registers[key] = temp;
+                    fileVariables.push_back(key);
 				}
 			}
 			tempString += "\t" + convertDeclaration(lineSplit) + "\n";
