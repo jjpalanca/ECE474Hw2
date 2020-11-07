@@ -30,7 +30,7 @@ int ModuleIndex = 0; //Global Variable for use in the function convertExpression
 // Converts math expressions in the format of 
 //  d = a + b
 // to a string of the fo
-//  ADD #(.WIDTH(<BitWidth>))ADD<ModuleIndex>(a,b,d);
+//  ADD #(.WIDTH(<BitWidth>))line<ModuleIndex>(a,b,d);
 // Supports the operations: REG, ADD, SUB, MUL, COMP, MUX2x1, SHR, SHL
 string convertExpresion(vector<string> expression) {
 	string CLK = "CLK";
@@ -97,7 +97,7 @@ string convertExpresion(vector<string> expression) {
 	else {
 		bitWidth = getBitWidth(expression[0]);
 		return "REG #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "(" + CLK + ","
-			+ RST + "," + expression[2] + "," + expression[0] + ");";
+			+ RST + "," + appendToInput(expression[2], bitWidth) + "," + expression[0] + ");";
 	}
 
 	return "UNEXPECTED EXPRESSION or ERROR\n";
@@ -123,7 +123,7 @@ string appendToInput(string input, string bitWidth) {
 				result = "{{" + to_string(difference) + "{" + input + "[" + mostSigBit + "]}}," +
 					input + "[" + mostSigBit + ":0]}";
 			else //Sign extending a bit of size 1
-				result = "{{" + to_string(difference) + "{" + input + "}}," +
+				result = "{" + to_string(difference) + "'b0," +
 				input + "}";
 		}
 		else { //padd zeros
