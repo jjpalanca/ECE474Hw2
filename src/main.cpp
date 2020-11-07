@@ -27,6 +27,23 @@ bool isItSigned(string variable);
 
 
 int ModuleIndex = 0; //Global Variable for use in the function convertExpression
+
+
+bool isValidOperator(string op) {
+	bool isValid = false;
+	vector<string> ops{"+", "-", "*", ">>", "<<", "?"};
+	for (string x: ops){
+		if (op.compare(x)==0){
+			isValid = true;
+			break;
+		}
+	}
+	return isValid;
+}
+
+//bool validVariables(vector<string> expression){
+//	return true;
+//}
 // Converts math expressions in the format of 
 //  d = a + b
 // to a string of the fo
@@ -38,14 +55,17 @@ string convertExpresion(vector<string> expression) {
 	string result = "";
 	ModuleIndex = ModuleIndex + 1;
 	string bitWidth = "";
-	if (expression.size() != 3) {
+	
+	// if not register expression 
+	if (expression.size() != 3/* && validateVariables() == true*/) {
 		string op = expression[3];
+		//validVariables(expression);
 		bitWidth = (getBitWidth(expression[0]) > getBitWidth(expression[4])) ? 
 			getBitWidth(expression[0]) : getBitWidth(expression[4]); //Bitwidth is determined by inputs
 		string inputsToOp = appendToInput(expression[2], bitWidth) + "," + appendToInput(expression[4], bitWidth);
 		//COMP; Comparison
 		result += (isItSigned(expression[2]) || isItSigned(expression[4])) ? "S" : ""; //Inputs signed?
-		if(op.compare(">") == 0)
+		if(op.compare(">") == 0)	
 			result += "COMP #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
 			+ inputsToOp + "," + expression[0] +"," + "1'b0" +"," + "1'b0" + ");";
 
@@ -57,7 +77,7 @@ string convertExpresion(vector<string> expression) {
 			result += "COMP #(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "("
 			+ inputsToOp + "," + "1'b0" + "," + "1'b0" + "," + expression[0] + ");";
 
-		else {
+		else if (isValidOperator(op)){
 			bitWidth = getBitWidth(expression[0]); //Bitwidth is determined by output or wire
 			inputsToOp = appendToInput(expression[2], bitWidth) + "," + appendToInput(expression[4], bitWidth);
 			//ADD; Addition
@@ -91,6 +111,11 @@ string convertExpresion(vector<string> expression) {
 			result += "#(.WIDTH(" + (bitWidth) + "))line" + to_string(ModuleIndex) + "(" 
 			+ inputsToOp + "," + expression[0] + ");";
 		}
+		else {
+			cout << "Error: Invalid operator" << endl;
+			exit(0);
+		}
+		
 		return result;
 	}
 	//REG
@@ -102,6 +127,7 @@ string convertExpresion(vector<string> expression) {
 
 	return "UNEXPECTED EXPRESSION or ERROR\n";
 }
+
 
 /*
 Creates a string which will append/concaneted a input according
@@ -241,11 +267,16 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 		string token;
 		string delimiter = " ";
 		size_t pos = 0;
+
+		//The following two lines of code remove white space
+		// characters at the end of the line
+		std::size_t endWhite = line.find_last_not_of(" \t\f\v\n\r");
+		if (endWhite!=std::string::npos){line.erase(endWhite+1);};
+
 		do {
 			pos = line.find(delimiter);
 			token = line.substr(0, pos);
 			lineSplit.push_back(token);
-			//cout << token << endl;
 			line.erase(0, pos + delimiter.length());
 		} while ((pos) != string::npos);
 		if (lineSplit[0] == "input" || lineSplit[0] == "output" || lineSplit[0] == "wire" || lineSplit[0] == "register") {

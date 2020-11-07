@@ -1,10 +1,8 @@
 input Int8 a, b, c
 
-output Int16 z
-output Int16 x
+output Int8 z			//missing output
 
-wire Int8 d 
-wire Int16 e
+wire Int8 d, e
 wire Int16 f, g
 wire Int16 xwire
 
