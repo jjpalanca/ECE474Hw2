@@ -415,7 +415,7 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 			tempString += "\t" + convertExpresion(lineSplit) + "\n";
 			results.push_back(tempString);
 		}
-		cout << tempString;
+		//cout << tempString;
 		tempString = "";
 	}
 	writeVerilogFile(output_filename, results);
@@ -506,17 +506,17 @@ int main(int argc, const char * argv[]) {
 	ifstream myfile;
 	myfile.open(argv[1]);
 	if (myfile) {
-		cout << "file " << argv[1] << " exists" << "\n";
+		//cout << "file " << argv[1] << " exists" << "\n";
 		if(argc == 3)
 			readFile(argv[1], argv[2]);
 		else
 			readFile(argv[1]);
 	}
 	else {
-		cout << "file doesn't exist" << "\n";
+		//cout << "file doesn't exist" << "\n";
 		return 0;
 	}
-	cout << "Press a key to continue" << endl;
-	cin.get();
+	//cout << "Press a key to continue" << endl;
+	//cin.get();
 	return 0;
 }

@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module verilogFile(b, a, c);
+module circuit3(b, a, c);
 	input [31:0] a;
 	input [15:0] b;
 	output [7:0] c;
