@@ -3,6 +3,6 @@ echo "Creating dbgen"
 mkdir build
 cd build/
 pwd
-cmake ..
+cmake3 ..
 make
 echo "dbgen can be found on build folder"
