@@ -44,15 +44,21 @@ bool isValidOperator(string op) {
 
 bool validVariables(vector<string> expression){
 	bool isValid = true;
+	//cout << "in valid Variables: ";
     for (auto exp: expression){
         int ctr = 0;
+		//cout << "exp:" << exp << endl;
         for(auto x: fileVariables){
+			/*cout << x << " ";
+			cout << "counter" << ctr << endl;*/
             if (exp.compare(x) == 0){   // if variable (exp) is found in fileVariables (declared), break out of the inner for loop and check the next 'exp'
-                break;
+				break;
             }
             ctr++;
         }
-        if (ctr == fileVariables.size()){       // variable (exp) is not found in fileVariables, thus, not valid 
+		//This is producing an error for 
+        if (ctr == fileVariables.size()){       // variable (exp) is not found in fileVariables, thus, not valid
+		//cout << "counter, fileVariable:" << ctr << " "<< fileVariables.size() << endl; 
             cout << "ERROR! Variable '" << exp << "' is missing or not declared!" << endl;
             return false;
         }
@@ -77,7 +83,9 @@ string convertExpresion(vector<string> expression) {
 
     vector<string> vars;
     for (int i = 0; i < expression.size(); i+=2){
-        vars.push_back(expression[i]);
+		//cout << "expression" << expression[i] << endl;
+		if (expression[i] != "")
+        	vars.push_back(expression[i]);
     }
 
     if (!validVariables(vars)) {
@@ -302,8 +310,12 @@ int readFile(string input_filename, string output_filename= "verilogFile") {
 		std::size_t endWhite = line.find_last_not_of(" \t\f\v\n\r");
 		if (endWhite!=std::string::npos){line.erase(endWhite+1);};
 
+		// FIGURE OUT HOW TO REMOVE COMMENTS
+
 		do {
 			pos = line.find(delimiter);
+			if(line.substr(0, pos).find("//") != std::string::npos)
+				break;
 			token = line.substr(0, pos);
 			lineSplit.push_back(token);
 			line.erase(0, pos + delimiter.length());
