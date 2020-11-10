@@ -431,7 +431,7 @@ void writeVerilogFile(string verilogFile, vector<string> results) {
 	file.open(verilogFile + ".v");
 	file << "`timescale 1ns / 1ps" << endl;
 	file << "module " << verilogFile << "(CLK, RST," << getVariableNames() << ");" << endl;
-	file << "\tinput CLK, RST;";
+	file << "\tinput CLK, RST;" << endl;
 	for (int i = 0; i < results.size(); i++) {
 		file << results[i];
 	}
