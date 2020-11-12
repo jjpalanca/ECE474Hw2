@@ -428,7 +428,7 @@ convertDeclaration functions.
 */
 void writeVerilogFile(string verilogFile, vector<string> results) {
 	ofstream file;
-	file.open(verilogFile + ".v");
+	file.open(verilogFile);
 	file << "`timescale 1ns / 1ps" << endl;
 	file << "module " << verilogFile << "(CLK, RST," << getVariableNames() << ");" << endl;
 	file << "\tinput CLK, RST;" << endl;
